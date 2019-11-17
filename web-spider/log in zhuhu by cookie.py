@@ -16,7 +16,6 @@ headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/5
            "Host": "www.zhihu.com",
            "Referer": "https://www.zhihu.com/",
            }
-# TODO 使用GitHub同步
 # TODO 学习：Session()的使用
 # 建立一个会话，可以把同一用户的不同请求联系起来；直到会话结束都会自动处理cookies
 session = requests.Session()
@@ -41,6 +40,7 @@ def get_xsrf():
     return _xsrf
 
 
+# TODO 学习：手动输入登陆验证码
 def get_captcha():
     """
     获取验证码本地显示
