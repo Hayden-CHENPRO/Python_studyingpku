@@ -2,6 +2,8 @@
 # -*- Coding:utf-8 -*-
 # Created by Hayden at 2019/11/16
 
+# 获得淘宝商品界面的商品名称和价格，按格式打印
+
 import requests
 import re
 
