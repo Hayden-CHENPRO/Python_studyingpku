@@ -2,7 +2,7 @@
 # -*- Coding:utf-8 -*-
 # Created by Hayden at 2019/11/15
 
-import urllib.request
+import requests
 import re
 
 
@@ -12,17 +12,15 @@ def getIpList():
     '''
 
     url = 'https://www.kuaidaili.com/free/inha/1/'
-    req = urllib.request.Request(url)
-    req.add_header('User-Agent', 'Opera/9.80 (Windows NT 6.0) Presto/2.12.388 Version/12.14')
+    headers = {'User-Agent': 'Opera/9.80 (Windows NT 6.0) Presto/2.12.388 Version/12.14'}
 
-    response = urllib.request.urlopen(req)
-    html = response.read().decode('utf-8')
+    r = requests.get(url, headers=headers)
 
     p_ip_list = r'((?:(?:[01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}(?:[01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5]))</td>\s*<td.*\d+?</td>'
     p_ip_port = r'(?:(?:[01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])\.){3}(?:[01]{0,1}\d{0,1}\d|2[0-4]\d|25[0-5])</td>\s*(<td.*\d+?)</td>'
 
-    ip_addrs_list = re.findall(p_ip_list, html)
-    port_list = re.findall(p_ip_port, html)
+    ip_addrs_list = re.findall(p_ip_list, r.text)
+    port_list = re.findall(p_ip_port, r.text)
 
     ipList = []
 

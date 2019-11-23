@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Scrapy settings for BaiduStock project
+# Scrapy settings for pixivImages project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -9,17 +9,17 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'BaiduStock'
+BOT_NAME = 'pixivImages'
 
-SPIDER_MODULES = ['BaiduStock.spiders']
-NEWSPIDER_MODULE = 'BaiduStock.spiders'
+SPIDER_MODULES = ['pixivImages.spiders']
+NEWSPIDER_MODULE = 'pixivImages.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = 'BaiduStock (+http://www.yourdomain.com)'
+#USER_AGENT = 'pixivImages (+http://www.yourdomain.com)'
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
@@ -47,14 +47,16 @@ ROBOTSTXT_OBEY = True
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    'BaiduStock.middlewares.BaidustockSpiderMiddleware': 543,
+#    'pixivImages.middlewares.PixivimagesSpiderMiddleware': 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-# DOWNLOADER_MIDDLEWARES = {
-#    'BaiduStock.middlewares.BaidustockDownloaderMiddleware': 543,
-# }
+DOWNLOADER_MIDDLEWARES = {
+   'pixivImages.middlewares.PixivimagesDownloaderMiddleware': 543,
+   'pixivImages.middlewares.UserAgentMiddleware':78,
+   'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None
+}
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html
@@ -65,7 +67,7 @@ ROBOTSTXT_OBEY = True
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'BaiduStock.pipelines.BaidustockInfoPipeline': 300,
+   'pixivImages.pipelines.PixivimagesPipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
@@ -89,5 +91,6 @@ ITEM_PIPELINES = {
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
+DOWNLOAD_TIMEOUT = 1800
+
 LOG_LEVEL = 'INFO'
-LOG_FILE = 'logger.log'

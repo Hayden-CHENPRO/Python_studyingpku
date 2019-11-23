@@ -1,6 +1,6 @@
 # !/usr/bin/env python
 # -*- Coding:utf-8 -*-
-# Created by Hayden at 2019/11/15
+# Created by Hayden at 2019/11/23
 
 import os, sys
 import urllib.request
@@ -19,6 +19,7 @@ def mkfolder():
 def setProxyIp():
     ipList = my_getProxyIp.getIpList()
     proxyIp = random.choice(ipList)
+    print("本次下载使用的代理IP为：%s"%proxyIp)
     proxy_support = urllib.request.ProxyHandler({'http': proxyIp})
     return proxy_support
 
@@ -101,9 +102,3 @@ if __name__ == '__main__':
     main()
 
 # TODO 设置模拟登陆
-
-
-
-
-
-

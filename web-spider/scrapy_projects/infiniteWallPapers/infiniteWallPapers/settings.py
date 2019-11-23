@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Scrapy settings for BaiduStock project
+# Scrapy settings for infiniteWallPapers project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -9,20 +9,20 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'BaiduStock'
+BOT_NAME = 'infiniteWallPapers'
 
-SPIDER_MODULES = ['BaiduStock.spiders']
-NEWSPIDER_MODULE = 'BaiduStock.spiders'
+SPIDER_MODULES = ['infiniteWallPapers.spiders']
+NEWSPIDER_MODULE = 'infiniteWallPapers.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = 'BaiduStock (+http://www.yourdomain.com)'
+#USER_AGENT = 'infiniteWallPapers (+http://www.yourdomain.com)'
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-#CONCURRENT_REQUESTS = 32
+CONCURRENT_REQUESTS = 16
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -47,14 +47,18 @@ ROBOTSTXT_OBEY = True
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    'BaiduStock.middlewares.BaidustockSpiderMiddleware': 543,
+#    'infiniteWallPapers.middlewares.InfinitewallpapersSpiderMiddleware': 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-# DOWNLOADER_MIDDLEWARES = {
-#    'BaiduStock.middlewares.BaidustockDownloaderMiddleware': 543,
-# }
+DOWNLOADER_MIDDLEWARES = {
+   'infiniteWallPapers.middlewares.InfinitewallpapersDownloaderMiddleware': 543,
+   'infiniteWallPapers.middlewares.UserAgentMiddleware': 234,
+   'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+   'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': None,
+   'infiniteWallPapers.middlewares.RandomProxyIp': None
+}
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html
@@ -65,7 +69,7 @@ ROBOTSTXT_OBEY = True
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'BaiduStock.pipelines.BaidustockInfoPipeline': 300,
+   'infiniteWallPapers.pipelines.pixivPipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
@@ -89,5 +93,9 @@ ITEM_PIPELINES = {
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
+DOWNLOAD_TIMEOUT = 1800
+
 LOG_LEVEL = 'INFO'
-LOG_FILE = 'logger.log'
+
+# set Agents
+
