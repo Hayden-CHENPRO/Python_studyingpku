@@ -2,32 +2,30 @@
 import scrapy
 import re
 import os
-from infiniteWallPapers.items import imgItem
-# import sys
-# sys.path.append("S:\pycharm_projects\Python_studying\code\web-spider\scrapy_projects\infiniteWallPapers")
-# cd code/web-spider/scrapy_projects/infiniteWallPapers
+from pixivImages.items import ImgItem
+# from scrapy import FormRequest
+# import cookieDict
 
 
-class PixivSpider(scrapy.Spider):
-    name = 'pixiv'
+class PixivauthorSpider(scrapy.Spider):
+    name = 'pixivAuthor_js'
     allowed_domains = ['pixiv.net']
-    AuID = input("请输入目标画师的ID：")   # 20778107, 17548864
-    start_urls = ['https://www.pixiv.net/member.php?id=' + AuID]
+    print("现在运行的是pixivAuthor_js")
+    AuID = input("请输入抓取画师的ID：")
+    start_urls = [AuID.join(['https://www.pixiv.net/ajax/user/', '/profile/all'])]
 
     folder = 'C:\\Users\\怠惰的金枪小鱼干\\Desktop\\画师ID_' + AuID
     os.mkdir(folder)
     os.chdir(folder)
 
     def parse(self, response):
-        sel = scrapy.selector.Selector(response)
-        artworks_id_list = sel.xpath(
-            '(//a[@class=" _work "] | //a[@class=" _work multiple "] | //a[@class=" _work manga multiple "])//@href'
-        ).extract()   # ['/en/artworks/77832699', ...]
+        p = r'"(\d*?)":null'
+        artworks_id_list = re.findall(p, response.text)   # ['77832699', ...]
 
         self.num = 0
         for works in artworks_id_list:
-            self.works_url = 'https://www.pixiv.net/' + works[4:]
-            self.logger.info("提取作品地址成功：%s", self.works_url)
+            self.works_url = 'https://www.pixiv.net/artworks/' + works
+            self.logger.info("提取作品主页成功：%s", self.works_url)
             yield scrapy.Request(self.works_url, callback=self.parse_work, dont_filter=True)
 
     def parse_work(self, response):
@@ -39,7 +37,7 @@ class PixivSpider(scrapy.Spider):
         for img_url in img_list:
             self.num += 1
             img_ori_url = img_url.split('"')[0]
-            self.logger.info("提取原始地址成功：%s", img_ori_url)
+            self.logger.info("提取作品原始地址成功：%s", img_ori_url)
             img_name = img_ori_url.split('/')[-1]
             yield scrapy.Request(
                 img_ori_url, callback=self.parse_img, headers=header,
@@ -47,13 +45,15 @@ class PixivSpider(scrapy.Spider):
             )
 
     def parse_img(self, response):
-        item = imgItem()
+        item = ImgItem()
         item['img_name'] = response.meta['img_name']
         item['picture'] = response.body
 
         self.logger.info("%d.图片文件名称为%s" %(self.num, item['img_name']))
-        self.logger.info("HEADERS：%s", str(response.request.headers))
+        self.logger.info("headers：%s", str(response.request.headers))
 
         yield item
 
-# TODO 模拟登陆
+# cd code\web-spider\scrapy_projects\pixivImages
+# scrapy crawl pixivAuthor_js
+# 17548864
