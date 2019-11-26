@@ -3,20 +3,24 @@ import scrapy
 import re
 import os
 from pixivImages.items import ImgItem
-# from scrapy import FormRequest
-# import cookieDict
+import cookieDict
 
 
 class PixivauthorSpider(scrapy.Spider):
-    name = 'pixivAuthor_'
+    name = 'pixivAuthor_cookie'
     allowed_domains = ['pixiv.net']
-    print("现在运行的是pixivAuthor_")
-    AuID = input("请输入抓取画师的ID：")
-    start_urls = ['https://www.pixiv.net/member.php?id=' + AuID]
 
-    folder = 'C:\\Users\\怠惰的金枪小鱼干\\Desktop\\画师ID_' + AuID
-    os.mkdir(folder)
-    os.chdir(folder)
+    def start_requests(self):
+        print("现在运行的是pixivAuthor_cookie")
+        AuID = input("请输入抓取画师的ID：")
+        author_page = 'https://www.pixiv.net/member_illust.php?id=' + AuID
+        cookies = cookieDict.cookie_deal()
+
+        folder = 'C:\\Users\\怠惰的金枪小鱼干\\Desktop\\画师ID_' + AuID
+        os.mkdir(folder)
+        os.chdir(folder)
+
+        yield scrapy.Request(author_page, callback=self.parse, cookies=cookies)
 
     def parse(self, response):
         sel = scrapy.selector.Selector(response)
@@ -52,10 +56,10 @@ class PixivauthorSpider(scrapy.Spider):
         item['picture'] = response.body
 
         self.logger.info("%d.图片文件名称为%s" %(self.num, item['img_name']))
-        self.logger.info("HEADERS：%s", str(response.request.headers))
+        self.logger.info("headers：%s", str(response.request.headers))
 
         yield item
 
 # cd code\web-spider\scrapy_projects\pixivImages
-# scrapy crawl pixivAuthor
+# scrapy crawl pixivAuthorCookie
 # 17548864

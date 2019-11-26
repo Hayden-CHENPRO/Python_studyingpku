@@ -17,10 +17,15 @@ def mkfolder():
 
 
 def setProxyIp():
-    ipList = my_getProxyIp.getIpList()
-    proxyIp = random.choice(ipList)
+    # ipList = my_getProxyIp.getIpList()
+    https_ipList = [
+        '117.95.195.24:9999', '49.89.85.28:9999', '117.30.112.40:9999', '59.57.148.121:9999']
+    # http_ipList = ['115.211.228.107:9999', '36.25.42.16:9999', '117.95.195.24:9999']
+    proxyIp = random.choice(https_ipList)
     print("本次下载使用的代理IP为：%s"%proxyIp)
-    proxy_support = urllib.request.ProxyHandler({'http': proxyIp})
+    proxy_support = urllib.request.ProxyHandler({'https': proxyIp})
+    # TODO 注：http代理ip不能访问https网站，此处使用的还是本机ip！！！
+    # proxy_support = urllib.request.ProxyHandler({'https': proxyIp})
     return proxy_support
 
 

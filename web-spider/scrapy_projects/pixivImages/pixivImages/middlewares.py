@@ -8,6 +8,7 @@
 from scrapy import signals
 import random
 from my_getUserAgent import user_agent_list
+# import my_getProxyIp
 
 class PixivimagesSpiderMiddleware(object):
     # Not all methods need to be defined. If a method is not defined,
@@ -107,3 +108,14 @@ class PixivimagesDownloaderMiddleware(object):
 class UserAgentMiddleware(object):
     def process_request(self, request, spider):
         request.headers['User-Agent'] = random.choice(user_agent_list)
+
+
+# # ipList = my_getProxyIp.getIpList()
+# ipList = [
+#     '117.95.195.24:9999', '49.89.85.28:9999', '117.30.112.40:9999', '59.57.148.121:9999']
+#
+# class ProxyIpMiddleware(object):
+#     def process_request(self, request, spider):
+#         pxs = random.choice(ipList)
+#         print("当前使用的代理ip为：%s"%pxs)
+#         request.meta['proxy'] = 'https://' + pxs
