@@ -49,11 +49,11 @@ class PixivauthorSpider(scrapy.Spider):
         item['img_name'] = response.meta['img_name']
         item['picture'] = response.body
 
-        self.logger.info("%d.图片文件名称为%s" %(self.num, item['img_name']))
+        self.logger.info("%d.图片文件名称为%s" % (self.num, item['img_name']))
         self.logger.info("headers：%s", str(response.request.headers))
 
         yield item
 
 # cd code\web-spider\scrapy_projects\pixivImages
 # scrapy crawl pixivAuthor_js
-# 17548864
+# 17548864  18302514
