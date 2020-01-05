@@ -6,7 +6,13 @@
 import os
 import re
 import pandas as pd
+import numpy as np
+from numpy import nan as NA
 from datetime import datetime
+import matplotlib.pyplot as plt
+import matplotlib
+import seaborn as sns
+from sklearn import linear_model
 
 
 class DataCleaning():
@@ -105,7 +111,7 @@ class DataCleaning():
             elif '亿' in each:
                 df2[i] = float(each[:-1]) * 10000
             else:
-                df2[i] = float(each)
+                df2[i] = float(each) / 10000
         return df2
 
     def datify(self, df, col_name):
@@ -217,27 +223,591 @@ class DataCleaning():
 os.chdir(r'C:\Users\怠惰的金枪小鱼干\Desktop')
 df = pd.read_csv('contents_1.csv', names=['番剧名', '播放量', '总评分', '评分人数', '开播时间', '标签',
                                       '弹幕量', '追番数', '剧集数', '会员否', 'actor', 'staff'])
-# pd.set_option('display.max_columns',1000)
-# pd.set_option('display.width', 1000)
-# pd.set_option('display.max_colwidth',1000)
-# pd.set_option('display.unicode.ambiguous_as_wide', True)
-# pd.set_option('display.unicode.east_asian_width', True)
+pd.set_option('display.max_columns',1000)
+pd.set_option('display.width', 1000)
+pd.set_option('display.max_colwidth',1000)
+pd.set_option('display.unicode.ambiguous_as_wide', True)
+pd.set_option('display.unicode.east_asian_width', True)
 
 new_data = DataCleaning()
-df_plays = new_data.numtify_with_unit(df, '播放量')
+df_plays_unsort = new_data.numtify_with_unit(df, '播放量')
+# df_plays = new_data.numtify_with_unit(df, '播放量').sort_values(axis=0, ascending=True)
 df_barCounts = new_data.numtify_with_unit(df, '弹幕量')
 df_follows = new_data.numtify_with_unit(df, '追番数')
 df_gradeCounts = df['评分人数'].fillna(0)
-df_avg_grade = df['总评分'].fillna(0)
-df_release_time = new_data.datify(df, '开播时间')
+# df_avg_grade = df['总评分'].fillna(0).sort_values(axis=0, ascending=True)
+df_avg_grade_unsort = df['总评分'].fillna(0)
+# df_release_time = new_data.datify(df, '开播时间')
 df_series = new_data.numtify_series(df, '剧集数')   # 统计数据不包含连载中的十月新番
-df_tags = new_data.tag_statistics(df, '标签')    # 返回每个标签的统计个数
-df_actor = new_data.actor_statistics(df, 'actor')    # 返回一个声优的统计个数字典
-df_staff = new_data.staff_statistics(df, 'staff')    # 返回一个职员的统计个数字典
+# df_tags = new_data.tag_statistics(df, '标签')    # 返回每个标签的统计个数，字典类型
+# df_actor = new_data.actor_statistics(df, 'actor')    # 返回一个声优的统计个数字典
+# df_actors = new_data
+# df_staff = new_data.staff_statistics(df, 'staff')    # 返回一个由导演和原作两个字典组成的元组
 
-# print(df)
-# print(df['播放量'])
-# print(df_tags)
-# df_actor = actor_statistics(df, 'actor')
-# with open('actor_list.txt', 'w', encoding='utf-8') as f:
-#     f.write(str(df_actor))
+
+# 单变量分析
+def dataTag(*plot_type, plot=None):
+    '''
+    显示柱形图的数据标签
+    :param plot_type: (0)显示的数据类型，数值or百分数；(1)总数sum，用于计算百分数的分母
+    :param plot: 绘图对象
+    '''
+    for each in plot:
+        if plot_type[0] == 'num':    # 给纵向条形图显示计数标签
+            height = each.get_height()
+            plt.text(each.get_x()+each.get_width()/2, height, height, ha='center', va='bottom')    # 柱体的横坐标、宽度、高度属性可分别通过对象的get_x()、get_width()、get_height()方法获得
+        elif plot_type[0] == 'percent':    # 给横向条形图添加百分数标签
+            perc = '%.2f%%'%(each.get_width() / plot_type[1] * 100)
+            plt.text(each.get_width()+5, each.get_y()+0.2, perc)
+    return None
+
+def plays_analysis_single(series):
+    '''
+    播放量单项分析：环形图
+    :param series: df_plays
+    '''
+    sum = series.shape[0]
+
+    labels = '<10', '10~100', '100~1000', '1000~10000', '>10000'
+    size_10 = series[(series <= 10)].shape[0] / sum
+    size_100 = series[(series > 10) & (series <= 100)].shape[0] / sum
+    size_1000 = series[(series > 100) & (series <= 1000)].shape[0] / sum
+    size_10000 = series[(series > 1000) & (series <= 10000)].shape[0] / sum
+    size_40000 = series[(series > 10000) & (series <= 40000)].shape[0] / sum
+    sizes = pd.Series([size_10, size_100, size_1000, size_10000, size_40000]).tolist()
+    sizes_0 = [1, 0, 0, 0]
+
+    plt.figure(figsize=(5, 5))    # 设置画布
+    plt.title('不同播放量番剧的比例', size=15, family='YouYuan')
+    plt.text(1.2, -1.2, '播放量单位：万', size=7, family='YouYuan')
+    colors = ['lightpink','lightskyblue','lightsalmon','plum', 'lightgreen']
+    explode = [0, 0, 0, 0, 0.1]
+    plt.pie(sizes, labels=labels, autopct='%.2f%%', colors=colors, radius=1.0, pctdistance = 0.8, explode=explode)
+    plt.pie(sizes_0, radius=0.6, colors = 'w')
+    plt.show()
+    return None
+
+def grade_analysis_single(series):
+    '''
+    评分单项分析：纵向条形图
+    :param series: df_avg_grade
+    '''
+    x_label_value = pd.Series(['0~2', '2~5', '5~7', '7~8', '8~9','9~9.5', '9.5~10'])
+    y_value_2 = series[(series <= 2)].shape[0]
+    y_value_5 = series[(series > 2) & (series <= 5)].shape[0]
+    y_value_7 = series[(series > 5) & (series <= 7)].shape[0]
+    y_value_8 = series[(series > 7) & (series <= 8)].shape[0]
+    y_value_9 = series[(series > 8) & (series <= 9)].shape[0]
+    y_value_95 = series[(series > 9) & (series <= 9.5)].shape[0]
+    y_value_10 = series[(series > 9.5) & (series <= 10)].shape[0]
+    y_label_value = pd.Series([y_value_2, y_value_5, y_value_7, y_value_8, y_value_9, y_value_95, y_value_10])
+
+    plt.figure(figsize=(8,5))    # 设置画布尺寸
+    plt.tick_params(labelsize=12)    # 设置坐标轴字符大小
+    plt.title('评分标准下的番剧分布', size=20, family='YouYuan')    # 标题，字号大小为20，中文字体类型
+    plt.xlabel('总评分', size=14, family='YouYuan')
+    plt.ylabel('番剧数/部', size=14, family='YouYuan')
+    plt.ylim((0, 1000))    # 设置纵坐标范围
+    grade_plot = plt.bar(x_label_value, y_label_value, width=0.5, color='k', alpha=0.7)
+    dataTag('num', plot=grade_plot)
+    plt.show()
+    return None
+
+def tags_analysis_single(dicts):
+    '''
+    标签单项分析：横向条形图
+    :param dicts: df_tags
+    '''
+    # 先把传入的字典转换为画图需要的元组和列表
+    sorted_dict_item = sorted(dicts.items(), key=lambda x:x[1], reverse=True)
+    sum = df.shape[0]; i = 0
+    y_label_value = pd.Series([])
+    x_label_value = pd.Series([])
+
+    for each in sorted_dict_item:
+        if i < 15:
+            y_label_value = y_label_value.append(pd.Series([each[0]], index=[14-i]))
+            x_label_value = x_label_value.append(pd.Series([each[1]], index=[14-i]))
+            i += 1
+        else:
+            break
+
+    plt.figure(figsize=(8, 5))    # 设置画布尺寸
+    plt.yticks(fontproperties='YouYuan', size=12)    # 设置y轴文本属性
+    plt.tick_params(labelsize=12)    # 设置坐标轴数字字符大小
+    plt.title('番剧标签分布', size=20, family='YouYuan')    # 标题，字号大小为20，中文字体类型
+    plt.xlabel('标签数/个', size=14, family='YouYuan')
+    plt.ylabel('标签名', size=14, family='YouYuan')
+    plt.xlim((0, 650))    # 设置横坐标范围
+    y_label_value = y_label_value.sort_index()    # 按索引重排序，使条形图长度递减
+    x_label_value = x_label_value.sort_index()
+    tags_plot = plt.barh(y_label_value, width=x_label_value, alpha=0.6, color='k')
+    dataTag('percent', sum, plot=tags_plot)
+    plt.show()
+
+def actor_analysis_single(dicts):
+    '''
+    标签单项分析：横向条形图
+    :param dicts: df_tags
+    '''
+    # 先把传入的字典转换为画图需要的元组和列表
+    sorted_dict_item = sorted(dicts.items(), key=lambda x:x[1], reverse=True)
+    sum = 0; i = 0
+    y_label_value = pd.Series([])
+    x_label_value = pd.Series([])
+    for each in sorted_dict_item:
+        sum += each[1]
+    for each in sorted_dict_item:
+        if i < 15:
+            y_label_value = y_label_value.append(pd.Series([each[0]], index=[14-i]))
+            x_label_value = x_label_value.append(pd.Series([each[1]], index=[14-i]))
+            i += 1
+        else:
+            break
+
+    plt.figure(figsize=(8, 5))    # 设置画布尺寸
+    plt.yticks(fontproperties='YouYuan', size=12)    # 设置y轴文本属性
+    plt.tick_params(labelsize=12)    # 设置坐标轴数字字符大小
+    plt.title('爆肝声优', size=20, family='YouYuan')    # 标题，字号大小为20，中文字体类型
+    plt.xlabel('配音角色数/个', size=14, family='YouYuan')
+    plt.ylabel('声优', size=14, family='YouYuan')
+    plt.xlim((0, 150))    # 设置横坐标范围
+    y_label_value = y_label_value.sort_index()    # 按索引重排序，使条形图长度递减
+    x_label_value = x_label_value.sort_index()
+    plot_actor = plt.barh(y_label_value, width=x_label_value, alpha=0.6, color='k')
+    for each in plot_actor:
+        plt.text(each.get_width() + 2, each.get_y() + 0.2, each.get_width())
+    plt.show()
+
+def director_analysis_single(dicts):
+    '''
+    标签单项分析：横向条形图
+    :param dicts: df_staff[0] 取导演
+    '''
+    # 先把传入的字典转换为画图需要的元组和列表
+    sorted_dict_item = sorted(dicts.items(), key=lambda x:x[1], reverse=True)
+    sum = 0; i = 0
+    y_label_value = pd.Series([])
+    x_label_value = pd.Series([])
+    for each in sorted_dict_item:
+        sum += each[1]
+    for each in sorted_dict_item:
+        if i < 15:
+            y_label_value = y_label_value.append(pd.Series([each[0]], index=[14-i]))
+            x_label_value = x_label_value.append(pd.Series([each[1]], index=[14-i]))
+            i += 1
+        else:
+            break
+
+    plt.figure(figsize=(8, 5))    # 设置画布尺寸
+    plt.yticks(fontproperties='YouYuan', size=12)    # 设置y轴文本属性
+    plt.tick_params(labelsize=12)    # 设置坐标轴数字字符大小
+    plt.title('爆肝导演', size=20, family='YouYuan')    # 标题，字号大小为20，中文字体类型
+    plt.xlabel('作品数/个', size=14, family='YouYuan')
+    plt.ylabel('导演', size=14, family='YouYuan')
+    plt.xlim((0, 30))    # 设置横坐标范围
+    y_label_value = y_label_value.sort_index()    # 按索引重排序，使条形图长度递减
+    x_label_value = x_label_value.sort_index()
+    plot_actor = plt.barh(y_label_value, width=x_label_value, alpha=0.6, color='k')
+    for each in plot_actor:
+        plt.text(each.get_width()+0.5, each.get_y() + 0.2, each.get_width())
+    plt.show()
+
+def author_analysis_single(dicts):
+    '''
+    标签单项分析：横向条形图
+    :param dicts: df_staff[0] 取导演
+    '''
+    # 先把传入的字典转换为画图需要的元组和列表
+    sorted_dict_item = sorted(dicts.items(), key=lambda x:x[1], reverse=True)
+    sum = 0; i = 0
+    y_label_value = pd.Series([])
+    x_label_value = pd.Series([])
+    for each in sorted_dict_item:
+        sum += each[1]
+    for each in sorted_dict_item:
+        if i < 9:
+            if each[0] != '':
+                y_label_value = y_label_value.append(pd.Series([each[0]], index=[8-i]))
+                x_label_value = x_label_value.append(pd.Series([each[1]], index=[8-i]))
+            i += 1
+        else:
+            break
+
+    plt.figure(figsize=(8, 5))    # 设置画布尺寸
+    plt.yticks(fontproperties='YouYuan', size=12)    # 设置y轴文本属性
+    plt.tick_params(labelsize=12)    # 设置坐标轴数字字符大小
+    plt.title('爆肝原作', size=20, family='YouYuan')    # 标题，字号大小为20，中文字体类型
+    plt.xlabel('作品数/个', size=14, family='YouYuan')
+    plt.ylabel('作者', size=14, family='YouYuan')
+    plt.xlim((0, 70))    # 设置横坐标范围
+    y_label_value = y_label_value.sort_index()    # 按索引重排序，使条形图长度递减
+    x_label_value = x_label_value.sort_index()
+    plot_actor = plt.barh(y_label_value, width=x_label_value, alpha=0.6, color='k')
+    for each in plot_actor:
+        plt.text(each.get_width()+0.5, each.get_y() + 0.2, each.get_width())
+    plt.show()
+
+
+# 播放量、总评分、评分人数、弹幕量、追番数五项的标准协方差矩阵以及相关系数矩阵
+def std_cor():
+    new_df = pd.DataFrame({'播放量': df_plays_unsort, '总评分': df_avg_grade_unsort ,'评分人数': df_gradeCounts,
+                           '弹幕量': df_barCounts, '追番数': df_follows})
+    filt_new_df = new_df[new_df['评分人数'] > 0]
+    # print(filt_new_df)
+    # print(filt_new_df.corr())    # 打印相关系数表
+    # print(filt_new_df.cov())    # 打印协方差矩阵
+    corr = filt_new_df.corr()
+
+    matplotlib.rcParams['font.family'] = 'YouYuan'  # 设置全局字体为幼圆
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(corr, annot=True, vmax=1, square=True, cmap="Blues")    # 绘制相关系数矩阵热力图
+    plt.title('各指标的相关系数矩阵', size=25, family='YouYuan')  # 标题，字号大小为20，中文字体类型
+    plt.savefig('std_corr', dpi=150)
+    plt.show()
+
+
+# 双变量分析
+def plays_grade():
+    plays_grade = pd.DataFrame({'播放量': df_plays_unsort, '总评分': df_avg_grade_unsort})
+    plt.figure(figsize=(7, 5))    # 设置画布尺寸
+    plt.yticks(fontproperties='YouYuan', size=12)    # 设置y轴文本属性
+    plt.tick_params(labelsize=12)    # 设置坐标轴数字字符大小
+    plt.title('播放量与评分的关系', size=20, family='YouYuan')    # 标题，字号大小为20，中文字体类型
+    plt.xlabel('评分', size=14, family='YouYuan')
+    plt.ylabel('播放量/万', size=14, family='YouYuan')
+    # plt.ylim((0, 40000))    # 设置纵坐标范围
+    # plt.xlim((0, 10))    # 设置横坐标范围
+    new_plays_grade = plays_grade[plays_grade['总评分'] >= 2]
+    plt.scatter(new_plays_grade['总评分'], new_plays_grade['播放量'], marker='+')
+    plt.savefig("plays_grade.jpg", dpi=150)
+    plt.show()
+
+def plays_gradeCounts():
+    plays_gradeCounts = pd.DataFrame({'播放量': df_plays_unsort, '评分人数': df_gradeCounts})
+    plt.figure(figsize=(7, 5))    # 设置画布尺寸
+    plt.yticks(fontproperties='YouYuan', size=12)    # 设置y轴文本属性
+    plt.tick_params(labelsize=12)    # 设置坐标轴数字字符大小
+    plt.title('播放量与评分人数的关系', size=20, family='YouYuan')    # 标题，字号大小为20，中文字体类型
+    plt.xlabel('评分人数/位', size=14, family='YouYuan')
+    plt.ylabel('播放量/万', size=14, family='YouYuan')
+    # plt.ylim((0, 40000))    # 设置纵坐标范围
+    # plt.xlim((0, 10))    # 设置横坐标范围
+    new_plays_gradeCounts = plays_gradeCounts[plays_gradeCounts['评分人数'] > 0]
+
+    linear = linear_model.LinearRegression()
+    linear.fit(np.array(new_plays_gradeCounts['评分人数']).reshape(-1,1), new_plays_gradeCounts['播放量'])  # 拟合输入输出数据
+
+    print('Coefficients: ', linear.coef_)  # 查看回归方程系数
+    print('intercept: ', linear.intercept_)  # 查看回归方程截距
+
+    X = np.arange(min(df_gradeCounts), max(df_gradeCounts)).reshape(-1, 1)    # 以评分人数的最大值和最小值为范围建立等差数列，方便后续画图
+
+    plt.scatter(new_plays_gradeCounts['评分人数'], new_plays_gradeCounts['播放量'])
+    plt.plot(X, linear.predict(X), color='blue')
+    plt.savefig("plays_gradeCounts.jpg", dpi=150)
+    plt.show()
+
+def plays_time():
+    plays_time = pd.DataFrame({'开播时间': df_release_time, '播放量': df_plays_unsort})
+    Jan, Apr, Jul, Oct, oth = [], [], [], [], []
+    # print(plays_time)
+    for i in range(len(plays_time)):
+        if '01-01' in str(plays_time.iloc[i][0]):
+            Jan.append(plays_time.iloc[i][1])
+        elif '04-01' in str(plays_time.iloc[i][0]):
+            Apr.append(plays_time.iloc[i][1])
+        elif '07-01' in str(plays_time.iloc[i][0]):
+            Jul.append(plays_time.iloc[i][1])
+        elif '10-01' in str(plays_time.iloc[i][0]):
+            Oct.append(plays_time.iloc[i][1])
+        else:
+            oth.append(plays_time.iloc[i][1])
+
+    # 绘制箱线图
+    plt.boxplot((Jan, Apr, Jul, Oct, oth), labels=["Jan.", "Apr.", "July", "Oct.", "others"],showfliers=False)    # 绘制箱线图
+    plt.yticks(fontproperties='YouYuan', size=12)  # 设置y轴文本属性
+    plt.tick_params(labelsize=12)  # 设置坐标轴数字字符大小
+    plt.title('播放量与上映季度的关系', size=20, family='YouYuan')  # 标题，字号大小为20，中文字体类型
+    plt.xlabel('季度', size=14, family='YouYuan')
+    plt.ylabel('播放量/万', size=14, family='YouYuan')
+    plt.ylim((0, 2000))  # 设置纵坐标范围
+    plt.savefig('plays_time.jpg', dpi=150)
+    plt.show()
+
+def plays_tags():
+    plays_tags = pd.DataFrame({'标签': df["标签"], '播放量': df_plays_unsort})
+    qihua, rexue, richang, kehuan, zhandou, mengxi, mangai, gaoxiao, xiaoyuan, zhiyu = [], [], [], [], [], [], [], [], [], []
+    for i in range(len(plays_tags)):
+        for each in eval(df["标签"][i]):
+            if each == "奇幻":
+                qihua.append(plays_tags.iloc[i][1])
+            elif each == "热血":
+                rexue.append(plays_tags.iloc[i][1])
+            elif each == "日常":
+                richang.append(plays_tags.iloc[i][1])
+            elif each == "科幻":
+                kehuan.append(plays_tags.iloc[i][1])
+            elif each == "战斗":
+                zhandou.append(plays_tags.iloc[i][1])
+            elif each == "萌系":
+                mengxi.append(plays_tags.iloc[i][1])
+            elif each == "漫画改":
+                mangai.append(plays_tags.iloc[i][1])
+            elif each == "搞笑":
+                gaoxiao.append(plays_tags.iloc[i][1])
+            elif each == "校园":
+                xiaoyuan.append(plays_tags.iloc[i][1])
+            elif each == "治愈":
+                zhiyu.append(plays_tags.iloc[i][1])
+
+    # 绘制箱线图
+    # 值得注意的是，由于番剧间播放量之间的差距较大，远距离的离群点被判定为异常值，所以箱线图中显示的最大值不代表绝对数据，可以认为是一个相对的概念
+    matplotlib.rcParams['font.family'] = 'YouYuan'    # 设置全局字体为幼圆
+    plt.boxplot((qihua, rexue, richang, kehuan, zhandou, mengxi, mangai, gaoxiao, xiaoyuan, zhiyu),
+                labels=["奇幻", "热血", "日常", "科幻", "战斗", "萌系", "漫改", "搞笑", "校园", "治愈"],
+                showfliers=False)  # 绘制箱线图
+    plt.yticks(fontproperties='YouYuan', size=12)  # 设置y轴文本属性
+    plt.tick_params(labelsize=12)  # 设置坐标轴数字字符大小
+    plt.title('各类型番剧的播放量', size=20, family='YouYuan')  # 标题，字号大小为20，中文字体类型
+    plt.xlabel('番剧类型', size=14, family='YouYuan')
+    plt.ylabel('播放量/万', size=14, family='YouYuan')
+    # plt.ylim((0, 2000))  # 设置纵坐标范围
+    plt.savefig('plays_tags.jpg', dpi=150)
+    plt.show()
+
+def time_grade():
+    time_grade = pd.DataFrame({'开播时间': df_release_time, '总评分': df_avg_grade_unsort})
+    time_grade = time_grade[time_grade["总评分"] > 0]
+    Jan, Apr, Jul, Oct, oth = [], [], [], [], []
+    # print(time_grade)
+    for i in range(len(time_grade)):
+        if '01-01' in str(time_grade.iloc[i][0]):
+            Jan.append(time_grade.iloc[i][1])
+        elif '04-01' in str(time_grade.iloc[i][0]):
+            Apr.append(time_grade.iloc[i][1])
+        elif '07-01' in str(time_grade.iloc[i][0]):
+            Jul.append(time_grade.iloc[i][1])
+        elif '10-01' in str(time_grade.iloc[i][0]):
+            Oct.append(time_grade.iloc[i][1])
+        else:
+            oth.append(time_grade.iloc[i][1])
+
+    # 绘制箱线图
+    plt.boxplot((Jan, Apr, Jul, Oct, oth), labels=["Jan.", "Apr.", "July", "Oct.", "others"],showfliers=False)    # 绘制箱线图
+    plt.yticks(fontproperties='YouYuan', size=12)  # 设置y轴文本属性
+    plt.tick_params(labelsize=12)  # 设置坐标轴数字字符大小
+    plt.title('评分与上映季度的关系', size=20, family='YouYuan')  # 标题，字号大小为20，中文字体类型
+    plt.xlabel('季度', size=14, family='YouYuan')
+    plt.ylabel('评分', size=14, family='YouYuan')
+    # plt.ylim((-2, 10))  # 设置纵坐标范围
+    plt.savefig('time_grade.jpg', dpi=150)
+    plt.show()
+
+def grade_tags():
+    grade_tags = pd.DataFrame({'标签': df["标签"], '总评分': df_avg_grade_unsort})
+    grade_tags = grade_tags[grade_tags["总评分"] > 0]
+    qihua, rexue, richang, kehuan, zhandou, mengxi, mangai, gaoxiao, xiaoyuan, zhiyu = [], [], [], [], [], [], [], [], [], []
+    for i in range(len(grade_tags)):
+        for each in eval(df["标签"][i]):
+            if each == "奇幻":
+                qihua.append(grade_tags.iloc[i][1])
+            elif each == "热血":
+                rexue.append(grade_tags.iloc[i][1])
+            elif each == "日常":
+                richang.append(grade_tags.iloc[i][1])
+            elif each == "科幻":
+                kehuan.append(grade_tags.iloc[i][1])
+            elif each == "战斗":
+                zhandou.append(grade_tags.iloc[i][1])
+            elif each == "萌系":
+                mengxi.append(grade_tags.iloc[i][1])
+            elif each == "漫画改":
+                mangai.append(grade_tags.iloc[i][1])
+            elif each == "搞笑":
+                gaoxiao.append(grade_tags.iloc[i][1])
+            elif each == "校园":
+                xiaoyuan.append(grade_tags.iloc[i][1])
+            elif each == "治愈":
+                zhiyu.append(grade_tags.iloc[i][1])
+
+    # 绘制箱线图
+    # 值得注意的是，由于番剧间播放量之间的差距较大，远距离的离群点被判定为异常值，所以箱线图中显示的最大值不代表绝对数据，可以认为是一个相对的概念
+    matplotlib.rcParams['font.family'] = 'YouYuan'    # 设置全局字体为幼圆
+    plt.boxplot((qihua, rexue, richang, kehuan, zhandou, mengxi, mangai, gaoxiao, xiaoyuan, zhiyu),
+                labels=["奇幻", "热血", "日常", "科幻", "战斗", "萌系", "漫改", "搞笑", "校园", "治愈"],
+                showfliers=False)  # 绘制箱线图
+    plt.yticks(fontproperties='YouYuan', size=12)  # 设置y轴文本属性
+    plt.tick_params(labelsize=12)  # 设置坐标轴数字字符大小
+    plt.title('各类型番剧的评分', size=20, family='YouYuan')  # 标题，字号大小为20，中文字体类型
+    plt.xlabel('番剧类型', size=14, family='YouYuan')
+    plt.ylabel('评分', size=14, family='YouYuan')
+    # plt.ylim((0, 2000))  # 设置纵坐标范围
+    plt.savefig('grade_tags.jpg', dpi=150)
+    plt.show()
+
+
+# 多变量分析
+new_df = pd.DataFrame({'播放量': df_plays_unsort, '弹幕量': df_barCounts, '追番数': df_follows,
+                       '评分人数': df_gradeCounts, '剧集数': df_series, '总评分': df_avg_grade_unsort,
+                       '标签': df["标签"]}).replace(0, NA).dropna()
+
+def retentionRate_grade():
+    '''
+    每部番剧的观众留存率和评分间的关系
+    画散点图
+    :return:
+    '''
+    new_df_inside = new_df[new_df["剧集数"] > 10]
+    retentionRate = new_df_inside['播放量'] / new_df_inside['剧集数'] / new_df_inside["追番数"]
+
+    plt.figure(figsize=(7, 5))    # 设置画布尺寸
+    plt.yticks(fontproperties='YouYuan', size=12)    # 设置y轴文本属性
+    plt.tick_params(labelsize=12)    # 设置坐标轴数字字符大小
+    plt.title('留存率与评分的关系', size=20, family='YouYuan')    # 标题，字号大小为20，中文字体类型
+    plt.xlabel('评分', size=14, family='YouYuan')
+    plt.ylabel('留存率', size=14, family='YouYuan')
+    plt.ylim((0, 6))    # 设置纵坐标范围
+    # plt.xlim((0, 10))    # 设置横坐标范围
+    plt.scatter(new_df_inside['总评分'], retentionRate, marker='+')
+    plt.savefig("retentionRate_grade.jpg", dpi=150)
+    plt.show()
+
+def retentionRate_tags():
+    '''
+     每部番剧的观众留存率和评分间的关系
+     画箱线图
+     :return:
+     '''
+    new_df_inside = new_df[new_df["剧集数"] > 10]
+    retentionRate = new_df_inside['播放量'] / new_df_inside['剧集数'] / new_df_inside["追番数"]
+
+    qihua, rexue, richang, kehuan, zhandou, mengxi, mangai, gaoxiao, xiaoyuan, zhiyu = [], [], [], [], [], [], [], [], [], []
+    for index in new_df_inside.index:
+        for each in eval(new_df_inside["标签"][index]):
+            if each == "奇幻":
+                qihua.append(retentionRate[index])
+            elif each == "热血":
+                rexue.append(retentionRate[index])
+            elif each == "日常":
+                richang.append(retentionRate[index])
+            elif each == "科幻":
+                kehuan.append(retentionRate[index])
+            elif each == "战斗":
+                zhandou.append(retentionRate[index])
+            elif each == "萌系":
+                mengxi.append(retentionRate[index])
+            elif each == "漫画改":
+                mangai.append(retentionRate[index])
+            elif each == "搞笑":
+                gaoxiao.append(retentionRate[index])
+            elif each == "校园":
+                xiaoyuan.append(retentionRate[index])
+            elif each == "治愈":
+                zhiyu.append(retentionRate[index])
+
+    # 绘制箱线图
+    # 值得注意的是，由于番剧间播放量之间的差距较大，远距离的离群点被判定为异常值，所以箱线图中显示的最大值不代表绝对数据，可以认为是一个相对的概念
+    matplotlib.rcParams['font.family'] = 'YouYuan'    # 设置全局字体为幼圆
+    plt.boxplot((qihua, rexue, richang, kehuan, zhandou, mengxi, mangai, gaoxiao, xiaoyuan, zhiyu),
+                labels=["奇幻", "热血", "日常", "科幻", "战斗", "萌系", "漫改", "搞笑", "校园", "治愈"],
+                showfliers=False)  # 绘制箱线图
+    plt.yticks(fontproperties='YouYuan', size=12)  # 设置y轴文本属性
+    plt.tick_params(labelsize=12)  # 设置坐标轴数字字符大小
+    plt.title('各类型番剧的留存率', size=20, family='YouYuan')  # 标题，字号大小为20，中文字体类型
+    plt.xlabel('番剧类型', size=14, family='YouYuan')
+    plt.ylabel('留存率', size=14, family='YouYuan')
+    # plt.ylim((0, 2000))  # 设置纵坐标范围
+    plt.savefig('retentionRate_tags', dpi=150)
+    plt.show()
+
+def userActivity_grade():
+    '''
+    每部番剧的用户活跃度和评分间的关系
+    画散点图
+    :return:
+    '''
+    new_df_inside = new_df
+    userActivity = new_df_inside["弹幕量"] / new_df_inside["播放量"] / new_df_inside["剧集数"] * 10    # 10为调整系数
+
+    plt.figure(figsize=(7, 5))    # 设置画布尺寸
+    plt.yticks(fontproperties='YouYuan', size=12)    # 设置y轴文本属性
+    plt.tick_params(labelsize=12)    # 设置坐标轴数字字符大小
+    plt.title('用户活跃度与评分的关系', size=20, family='YouYuan')    # 标题，字号大小为20，中文字体类型
+    plt.xlabel('评分', size=14, family='YouYuan')
+    plt.ylabel('活跃度', size=14, family='YouYuan')
+    plt.ylim((0, 0.75))    # 设置纵坐标范围
+    # plt.xlim((0, 10))    # 设置横坐标范围
+    plt.scatter(new_df_inside['总评分'], userActivity, marker='+')
+    plt.savefig("uesrActivity_grade.jpg", dpi=150)
+    plt.show()
+
+def userActivity_tags():
+    '''
+     每部番剧的用户活跃度和评分间的关系
+     画箱线图
+     :return:
+     '''
+    new_df_inside = new_df
+    userActivity = new_df_inside["弹幕量"] / new_df_inside["播放量"] / new_df_inside["剧集数"] * 10    # 10为调整系数
+
+    qihua, rexue, richang, kehuan, zhandou, mengxi, mangai, gaoxiao, xiaoyuan, zhiyu = [], [], [], [], [], [], [], [], [], []
+    for index in new_df_inside.index:
+        for each in eval(new_df_inside["标签"][index]):
+            if each == "奇幻":
+                qihua.append(userActivity[index])
+            elif each == "热血":
+                rexue.append(userActivity[index])
+            elif each == "日常":
+                richang.append(userActivity[index])
+            elif each == "科幻":
+                kehuan.append(userActivity[index])
+            elif each == "战斗":
+                zhandou.append(userActivity[index])
+            elif each == "萌系":
+                mengxi.append(userActivity[index])
+            elif each == "漫画改":
+                mangai.append(userActivity[index])
+            elif each == "搞笑":
+                gaoxiao.append(userActivity[index])
+            elif each == "校园":
+                xiaoyuan.append(userActivity[index])
+            elif each == "治愈":
+                zhiyu.append(userActivity[index])
+
+    # 绘制箱线图
+    # 值得注意的是，由于番剧间播放量之间的差距较大，远距离的离群点被判定为异常值，所以箱线图中显示的最大值不代表绝对数据，可以认为是一个相对的概念
+    matplotlib.rcParams['font.family'] = 'YouYuan'    # 设置全局字体为幼圆
+    plt.boxplot((qihua, rexue, richang, kehuan, zhandou, mengxi, mangai, gaoxiao, xiaoyuan, zhiyu),
+                labels=["奇幻", "热血", "日常", "科幻", "战斗", "萌系", "漫改", "搞笑", "校园", "治愈"],
+                showfliers=False)  # 绘制箱线图
+    plt.yticks(fontproperties='YouYuan', size=12)  # 设置y轴文本属性
+    plt.tick_params(labelsize=12)  # 设置坐标轴数字字符大小
+    plt.title('各类型番剧的留存率', size=20, family='YouYuan')  # 标题，字号大小为20，中文字体类型
+    plt.xlabel('番剧类型', size=14, family='YouYuan')
+    plt.ylabel('留存率', size=14, family='YouYuan')
+    # plt.ylim((0, 2000))  # 设置纵坐标范围
+    plt.savefig('userActivity_tags', dpi=150)
+    plt.show()
+
+
+# 执行指令：
+# plays_analysis_single(df_plays)
+# grade_analysis_single(df_avg_grade)
+# tags_analysis_single(df_tags)
+# actor_analysis_single(df_actor)
+# director_analysis_single(df_staff[0])
+# author_analysis_single(df_staff[1])
+
+# plays_grade()    # 画播放量和总评分关系图
+# plays_gradeCounts()    # 画播放量和评分人数关系图
+# std_cor()    # 打印协方差矩阵和相关系数矩阵
+# plays_time()    # 画播放量和开播时间的箱线图
+# plays_tags()    # 画播放量和标签的箱线图
+# time_grade()    # 画开播时间和评分的箱线图
+# grade_tags()    # 画评分和番剧类型的箱线图
+
+# retentionRate_grade()    # 观众留存率与评分的关系
+# retentionRate_tags()    # 观众留存率与标签之间的关系
+# userActivity_grade()    # 用户活跃度和评分的关系
+# userActivity_tags()    # 用户活跃度与标签之间的关系
